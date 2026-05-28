@@ -3,8 +3,9 @@ import type { ActivityRecord, BabyProfile, Unit } from '../types';
 const profileKey = 'flybo-baby-tracker-profile';
 const activityKey = 'flybo-baby-tracker-activities';
 const unitKey = 'flybo-baby-tracker-unit';
+const knownProfilesKey = 'flybo-baby-tracker-known-profiles';
 
-const defaultProfile: BabyProfile = {
+export const defaultProfile: BabyProfile = {
   id: null,
   shareCode: null,
   name: '',
@@ -32,8 +33,7 @@ const writeJson = (key: string, value: unknown) => {
   localStorage.setItem(key, JSON.stringify(value));
 };
 
-export const loadProfile = (): BabyProfile => {
-  const profile = readJson<Partial<BabyProfile>>(profileKey, defaultProfile);
+const normalizeProfile = (profile: Partial<BabyProfile>): BabyProfile => {
   const ageWeeks = Number(profile.ageWeeks);
 
   return {
@@ -43,6 +43,11 @@ export const loadProfile = (): BabyProfile => {
     dateOfBirth: typeof profile.dateOfBirth === 'string' ? profile.dateOfBirth : null,
     ageWeeks: Number.isFinite(ageWeeks) && ageWeeks >= 0 ? ageWeeks : null,
   };
+};
+
+export const loadProfile = (): BabyProfile => {
+  const profile = readJson<Partial<BabyProfile>>(profileKey, defaultProfile);
+  return normalizeProfile(profile);
 };
 
 export const saveProfile = (profile: BabyProfile) => {
@@ -67,4 +72,17 @@ export const loadUnit = (): Unit => {
 export const saveUnit = (unit: Unit) => {
   if (!hasStorage()) return;
   localStorage.setItem(unitKey, unit);
+};
+
+export const loadKnownProfiles = (): BabyProfile[] => {
+  const profiles = readJson<Partial<BabyProfile>[]>(knownProfilesKey, []);
+  if (!Array.isArray(profiles)) return [];
+
+  return profiles
+    .map(normalizeProfile)
+    .filter((profile) => profile.shareCode);
+};
+
+export const saveKnownProfiles = (profiles: BabyProfile[]) => {
+  writeJson(knownProfilesKey, profiles.filter((profile) => profile.shareCode));
 };

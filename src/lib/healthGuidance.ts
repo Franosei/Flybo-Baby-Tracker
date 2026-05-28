@@ -1,6 +1,12 @@
 import { differenceInCalendarDays, differenceInMonths } from 'date-fns';
 import type { ActivityRecord, BabyProfile, DailyStats, Unit } from '../types';
-import { formatVolume, toMilliliters } from './units';
+import {
+  breastfeedingEstimateMidpointMl,
+  breastfeedingEstimateMlRange,
+  formatVolume,
+  formatVolumeRange,
+  toMilliliters,
+} from './units';
 
 type HealthStatus = 'good' | 'watch' | 'attention' | 'info';
 
@@ -221,6 +227,12 @@ export const buildHealthCheck = (
   const formulaRecords = feedRecords.filter((record) => record.details?.feedType === 'formula');
   const expressedRecords = feedRecords.filter((record) => record.details?.feedType === 'expressed');
   const bottleTotalMl = todayStats.formulaMl + todayStats.expressedMl;
+  const breastEstimate = breastfeedingEstimateMlRange(todayStats.breastfeedingMinutes);
+  const totalMilkMinMl = bottleTotalMl + breastEstimate.min;
+  const totalMilkMaxMl = bottleTotalMl + breastEstimate.max;
+  const totalMilkMidpointMl = bottleTotalMl + breastfeedingEstimateMidpointMl(todayStats.breastfeedingMinutes);
+  const hasBreastEstimate = todayStats.breastfeedingMinutes > 0;
+  const hasAnyMilk = bottleTotalMl > 0 || hasBreastEstimate;
   const formulaOnly = formulaRecords.length > 0 && breastfeedingCount === 0 && expressedRecords.length === 0;
   const weeMin = expectedWeeMinimum(profile, band);
 
@@ -233,14 +245,20 @@ export const buildHealthCheck = (
 
   const items: HealthCheckItem[] = [];
 
-  if (band.bottleTotalMl && bottleTotalMl > 0) {
-    const status = rangeStatus(bottleTotalMl, band.bottleTotalMl);
+  if (band.bottleTotalMl && hasAnyMilk) {
+    const status = rangeStatus(totalMilkMidpointMl, band.bottleTotalMl);
     items.push({
-      label: 'Bottle intake',
-      value: formatVolume(bottleTotalMl, unit),
+      label: 'Milk intake',
+      value: hasBreastEstimate
+        ? formatVolumeRange(totalMilkMinMl, totalMilkMaxMl, unit)
+        : formatVolume(bottleTotalMl, unit),
       target: rangeLabel(band.bottleTotalMl, unit),
       status,
-      message: status === 'good' ? 'Bottle total is in the usual range.' : 'Compare with hunger cues and weight gain.',
+      message: hasBreastEstimate
+        ? 'Breastfeeding is estimated as 30 min around 60-90 ml.'
+        : status === 'good'
+          ? 'Bottle total is in the usual range.'
+          : 'Compare with hunger cues and weight gain.',
     });
   } else if (band.breastFeeds) {
     const status = feedRecords.length === 0 ? 'attention' : rangeStatus(feedRecords.length, band.breastFeeds);

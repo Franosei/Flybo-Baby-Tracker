@@ -1,5 +1,10 @@
 import { useMemo, useState } from 'react';
-import { formatVolume } from '../lib/units';
+import {
+  breastfeedingEstimateMidpointMl,
+  breastfeedingEstimateMlRange,
+  formatVolume,
+  formatVolumeRange,
+} from '../lib/units';
 import type { DailyStats, Unit } from '../types';
 
 type ChartView = 'bottle' | 'breastfeeding' | 'nappies';
@@ -10,7 +15,7 @@ interface DailyChartsProps {
 }
 
 const chartViews: { label: string; value: ChartView }[] = [
-  { label: 'Bottle', value: 'bottle' },
+  { label: 'Milk', value: 'bottle' },
   { label: 'Breastfeeding', value: 'breastfeeding' },
   { label: 'Nappies', value: 'nappies' },
 ];
@@ -23,8 +28,11 @@ const widthFor = (value: number, max: number) => {
 const DailyCharts = ({ dailyStats, unit }: DailyChartsProps) => {
   const [view, setView] = useState<ChartView>('bottle');
 
-  const maxBottleMl = useMemo(
-    () => Math.max(...dailyStats.map((day) => day.expressedMl + day.formulaMl), 1),
+  const maxMilkMl = useMemo(
+    () => Math.max(
+      ...dailyStats.map((day) => day.expressedMl + day.formulaMl + breastfeedingEstimateMidpointMl(day.breastfeedingMinutes)),
+      1,
+    ),
     [dailyStats],
   );
   const maxBreastfeedingMinutes = useMemo(
@@ -62,7 +70,13 @@ const DailyCharts = ({ dailyStats, unit }: DailyChartsProps) => {
       {view === 'bottle' ? (
         <div className="chart-list" role="list">
           {dailyStats.map((day) => {
-            const totalMl = day.expressedMl + day.formulaMl;
+            const bottleMl = day.expressedMl + day.formulaMl;
+            const breastEstimate = breastfeedingEstimateMlRange(day.breastfeedingMinutes);
+            const totalMinMl = bottleMl + breastEstimate.min;
+            const totalMaxMl = bottleMl + breastEstimate.max;
+            const totalLabel = day.breastfeedingMinutes > 0
+              ? formatVolumeRange(totalMinMl, totalMaxMl, unit)
+              : formatVolume(bottleMl, unit);
 
             return (
               <div className="chart-row" key={day.key} role="listitem">
@@ -70,17 +84,21 @@ const DailyCharts = ({ dailyStats, unit }: DailyChartsProps) => {
                   <strong>{day.dayLabel}</strong>
                   <span>{day.dateLabel}</span>
                 </div>
-                <div className="bar-track stacked" aria-label={`${day.dateLabel} bottle intake`}>
+                <div className="bar-track stacked" aria-label={`${day.dateLabel} milk intake`}>
                   <span
                     className="bar-fill expressed"
-                    style={{ width: `${widthFor(day.expressedMl, maxBottleMl)}%` }}
+                    style={{ width: `${widthFor(day.expressedMl, maxMilkMl)}%` }}
                   />
                   <span
                     className="bar-fill formula"
-                    style={{ width: `${widthFor(day.formulaMl, maxBottleMl)}%` }}
+                    style={{ width: `${widthFor(day.formulaMl, maxMilkMl)}%` }}
+                  />
+                  <span
+                    className="bar-fill breast-estimate"
+                    style={{ width: `${widthFor(breastfeedingEstimateMidpointMl(day.breastfeedingMinutes), maxMilkMl)}%` }}
                   />
                 </div>
-                <strong className="chart-value">{formatVolume(totalMl, unit)}</strong>
+                <strong className="chart-value">{totalLabel}</strong>
               </div>
             );
           })}
@@ -92,6 +110,10 @@ const DailyCharts = ({ dailyStats, unit }: DailyChartsProps) => {
             <span>
               <i className="legend-dot formula" />
               Formula
+            </span>
+            <span>
+              <i className="legend-dot breast-estimate" />
+              Breast estimate
             </span>
           </div>
         </div>

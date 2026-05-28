@@ -110,6 +110,44 @@ p {
   color: white;
 }
 
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.baby-switcher {
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: white;
+}
+
+.baby-switcher span {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.baby-switcher select {
+  max-width: 220px;
+  border: none;
+  background: transparent;
+  color: var(--ink);
+  font-weight: 800;
+  outline: none;
+}
+
+.top-message {
+  margin-bottom: 12px;
+}
+
 .dashboard-head {
   align-items: stretch;
   justify-content: space-between;
@@ -528,6 +566,12 @@ p {
   font-size: 1.1rem;
 }
 
+.estimate-note {
+  margin-top: 12px;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
 .health-panel {
   border-left: 6px solid #8a96a8;
 }
@@ -701,6 +745,11 @@ p {
 }
 
 .bar-fill.breastfeeding {
+  background: var(--breast);
+}
+
+.bar-fill.breast-estimate,
+.legend-dot.breast-estimate {
   background: var(--breast);
 }
 
@@ -941,6 +990,21 @@ p {
     align-items: flex-start;
     flex-direction: column;
     gap: 2px;
+  }
+
+  .topbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .topbar-actions,
+  .baby-switcher,
+  .baby-switcher select {
+    width: 100%;
+  }
+
+  .topbar-actions .secondary-button {
+    flex: 1 1 150px;
   }
 
   .choice-grid {

@@ -1,6 +1,6 @@
-import { useMemo, useState, type FormEvent } from 'react';
+import { useMemo, useState, type ChangeEvent, type FormEvent } from 'react';
 import { format } from 'date-fns';
-import { Activity, Baby, Clock3, Droplet, Milk, Pencil, Save, Timer } from 'lucide-react';
+import { Activity, Baby, Clock3, Droplet, Milk, Pencil, Plus, Save, Timer } from 'lucide-react';
 import ActionButton from './components/ActionButton';
 import ActivityList from './components/ActivityList';
 import DailyCharts from './components/DailyCharts';
@@ -8,7 +8,7 @@ import FeedModal from './components/FeedModal';
 import HealthCheck from './components/HealthCheck';
 import { useBabyTracker } from './hooks/useBabyTracker';
 import { ageInWeeks, ageLabelFromBirthDate } from './lib/age';
-import { formatVolume } from './lib/units';
+import { breastfeedingEstimateMlRange, formatVolume, formatVolumeRange } from './lib/units';
 import type { FeedDetails, Unit } from './types';
 
 const legacyAgeLabel = (ageWeeks: number | null) => {
@@ -32,6 +32,9 @@ const App = () => {
   const {
     profile,
     setProfile,
+    knownProfiles,
+    switchProfile,
+    startNewProfile,
     joinProfile,
     activities,
     unit,
@@ -48,11 +51,21 @@ const App = () => {
   const [isFeedModalOpen, setFeedModalOpen] = useState(false);
   const [showProfileForm, setShowProfileForm] = useState(!profile.shareCode && !profile.dateOfBirth);
   const [joinError, setJoinError] = useState('');
+  const [switchError, setSwitchError] = useState('');
 
   const babyName = profile.name.trim() || 'Baby';
   const currentAgeWeeks = ageInWeeks(profile.dateOfBirth) ?? profile.ageWeeks;
   const babyAgeLabel = profile.dateOfBirth ? ageLabelFromBirthDate(profile.dateOfBirth) : legacyAgeLabel(profile.ageWeeks);
   const bottleTotalMl = todayStats.expressedMl + todayStats.formulaMl;
+  const breastEstimate = breastfeedingEstimateMlRange(todayStats.breastfeedingMinutes);
+  const totalMilkMinMl = bottleTotalMl + breastEstimate.min;
+  const totalMilkMaxMl = bottleTotalMl + breastEstimate.max;
+  const milkIntakeLabel = todayStats.breastfeedingMinutes > 0
+    ? formatVolumeRange(totalMilkMinMl, totalMilkMaxMl, unit)
+    : formatVolume(bottleTotalMl, unit);
+  const breastEstimateLabel = todayStats.breastfeedingMinutes > 0
+    ? formatVolumeRange(breastEstimate.min, breastEstimate.max, unit)
+    : formatVolume(0, unit);
 
   const todayLabel = useMemo(() => format(new Date(), 'EEE, MMM d'), []);
 
@@ -76,6 +89,7 @@ const App = () => {
     });
 
     if (didSave) {
+      setSwitchError('');
       setShowProfileForm(false);
     }
   };
@@ -88,12 +102,31 @@ const App = () => {
     setJoinError('');
     const didJoin = await joinProfile(shareCode);
     if (didJoin) {
+      setSwitchError('');
       setShowProfileForm(false);
       event.currentTarget.reset();
       return;
     }
 
     setJoinError('Baby ID not found. Check the number and try again.');
+  };
+
+  const handleSwitchProfile = async (event: ChangeEvent<HTMLSelectElement>) => {
+    const nextShareCode = event.currentTarget.value;
+    if (!nextShareCode || nextShareCode === profile.shareCode) return;
+
+    setSwitchError('');
+    const didSwitch = await switchProfile(nextShareCode);
+    if (!didSwitch) {
+      setSwitchError('Could not open that baby profile. Try entering the Baby ID again.');
+    }
+  };
+
+  const handleNewProfile = () => {
+    startNewProfile();
+    setJoinError('');
+    setSwitchError('');
+    setShowProfileForm(true);
   };
 
   const handleUnitChange = (nextUnit: Unit) => {
@@ -112,11 +145,33 @@ const App = () => {
             <strong>Baby Tracker</strong>
           </div>
         </div>
-        <button type="button" className="secondary-button compact" onClick={() => setShowProfileForm(true)}>
-          <Pencil size={17} />
-          Profile
-        </button>
+        <div className="topbar-actions">
+          {knownProfiles.length > 0 ? (
+            <label className="baby-switcher">
+              <span>Baby</span>
+              <select value={profile.shareCode ?? ''} onChange={handleSwitchProfile}>
+                <option value="" disabled>
+                  Select baby
+                </option>
+                {knownProfiles.map((knownProfile) => (
+                  <option key={knownProfile.shareCode} value={knownProfile.shareCode ?? ''}>
+                    {(knownProfile.name.trim() || 'Baby')} ({knownProfile.shareCode})
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
+          <button type="button" className="secondary-button compact" onClick={handleNewProfile}>
+            <Plus size={17} />
+            New baby
+          </button>
+          <button type="button" className="secondary-button compact" onClick={() => setShowProfileForm(true)}>
+            <Pencil size={17} />
+            Profile
+          </button>
+        </div>
       </header>
+      {switchError ? <p className="form-message top-message">{switchError}</p> : null}
 
       <section className="dashboard-head">
         <div className="baby-overview">
@@ -242,8 +297,8 @@ const App = () => {
               <Milk size={21} />
             </span>
             <div>
-              <span>Bottle intake</span>
-              <strong>{formatVolume(bottleTotalMl, unit)}</strong>
+              <span>Milk intake</span>
+              <strong>{milkIntakeLabel}</strong>
             </div>
           </article>
           <article className="summary-card">
@@ -285,6 +340,14 @@ const App = () => {
             <strong>{formatVolume(todayStats.formulaMl, unit)}</strong>
           </div>
           <div>
+            <span>Breast estimate</span>
+            <strong>{breastEstimateLabel}</strong>
+          </div>
+          <div>
+            <span>Bottle logged</span>
+            <strong>{formatVolume(bottleTotalMl, unit)}</strong>
+          </div>
+          <div>
             <span>Feed sessions</span>
             <strong>{todayStats.feedCount}</strong>
           </div>
@@ -293,6 +356,7 @@ const App = () => {
             <strong>{activities.length}</strong>
           </div>
         </div>
+        <p className="estimate-note">Breastfeeding estimate uses 30 min as about 60-90 ml.</p>
       </section>
 
       <HealthCheck profile={profile} activities={activities} todayStats={todayStats} unit={unit} />

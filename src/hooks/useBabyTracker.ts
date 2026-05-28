@@ -2,7 +2,17 @@ import { format, isSameDay, subDays } from 'date-fns';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ActivityRecord, BabyProfile, DailyStats, FeedDetails } from '../types';
 import { createActivityApi, deleteActivityApi, fetchBootstrap, joinProfileApi, saveProfileApi } from '../lib/api';
-import { loadActivities, loadProfile, loadUnit, saveActivities, saveProfile, saveUnit } from '../lib/storage';
+import {
+  defaultProfile,
+  loadActivities,
+  loadKnownProfiles,
+  loadProfile,
+  loadUnit,
+  saveActivities,
+  saveKnownProfiles,
+  saveProfile,
+  saveUnit,
+} from '../lib/storage';
 import { toMilliliters } from '../lib/units';
 
 const nowIso = () => new Date().toISOString();
@@ -50,8 +60,16 @@ const addRecordToStats = (stats: DailyStats, entry: ActivityRecord) => {
   }
 };
 
+const upsertKnownProfile = (profiles: BabyProfile[], nextProfile: BabyProfile) => {
+  if (!nextProfile.shareCode) return profiles;
+
+  const withoutCurrent = profiles.filter((item) => item.shareCode !== nextProfile.shareCode);
+  return [nextProfile, ...withoutCurrent].slice(0, 12);
+};
+
 export const useBabyTracker = () => {
   const [profile, setProfileState] = useState(loadProfile);
+  const [knownProfiles, setKnownProfiles] = useState<BabyProfile[]>(loadKnownProfiles);
   const [activities, setActivities] = useState<ActivityRecord[]>(loadActivities);
   const [unit, setUnit] = useState(loadUnit);
   const [isApiConnected, setApiConnected] = useState(false);
@@ -73,6 +91,7 @@ export const useBabyTracker = () => {
       .then(({ profile: apiProfile, activities: apiActivities }) => {
         if (!isMounted) return;
         setProfileState(apiProfile);
+        setKnownProfiles((currentProfiles) => upsertKnownProfile(currentProfiles, apiProfile));
         setActivities(apiActivities);
         setApiConnected(true);
       })
@@ -89,6 +108,10 @@ export const useBabyTracker = () => {
   useEffect(() => {
     saveProfile(profile);
   }, [profile]);
+
+  useEffect(() => {
+    saveKnownProfiles(knownProfiles);
+  }, [knownProfiles]);
 
   useEffect(() => {
     saveActivities(activities);
@@ -122,6 +145,10 @@ export const useBabyTracker = () => {
     return days;
   }, [activities]);
 
+  const rememberProfile = useCallback((nextProfile: BabyProfile) => {
+    setKnownProfiles((currentProfiles) => upsertKnownProfile(currentProfiles, nextProfile));
+  }, []);
+
   const setProfile = useCallback(async (nextProfile: BabyProfile) => {
     setProfileState(nextProfile);
     setSavingProfile(true);
@@ -130,6 +157,7 @@ export const useBabyTracker = () => {
     try {
       const { profile: savedProfile } = await saveProfileApi(nextProfile);
       setProfileState(savedProfile);
+      rememberProfile(savedProfile);
       setApiConnected(true);
       return true;
     } catch {
@@ -139,7 +167,7 @@ export const useBabyTracker = () => {
     } finally {
       setSavingProfile(false);
     }
-  }, []);
+  }, [rememberProfile]);
 
   const joinProfile = useCallback(async (shareCode: string) => {
     const trimmedCode = shareCode.trim();
@@ -149,6 +177,7 @@ export const useBabyTracker = () => {
       const { profile: joinedProfile, activities: joinedActivities } = await joinProfileApi(trimmedCode);
       setProfileState(joinedProfile);
       setActivities(joinedActivities);
+      rememberProfile(joinedProfile);
       setApiConnected(true);
       setProfileError('');
       return true;
@@ -156,6 +185,17 @@ export const useBabyTracker = () => {
       setApiConnected(false);
       return false;
     }
+  }, [rememberProfile]);
+
+  const switchProfile = useCallback(async (shareCode: string) => {
+    return joinProfile(shareCode);
+  }, [joinProfile]);
+
+  const startNewProfile = useCallback(() => {
+    setProfileState({ ...defaultProfile });
+    setActivities([]);
+    setApiConnected(false);
+    setProfileError('');
   }, []);
 
   const addRecord = useCallback((type: ActivityRecord['type'], details: FeedDetails | null) => {
@@ -193,6 +233,9 @@ export const useBabyTracker = () => {
   return {
     profile,
     setProfile,
+    knownProfiles,
+    switchProfile,
+    startNewProfile,
     activities,
     unit,
     setUnit,
