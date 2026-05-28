@@ -1,0 +1,27 @@
+{
+  "name": "flybo-baby-tracker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "start": "node server/index.js",
+    "dev:api": "node server/index.js",
+    "db:push": "node scripts/apply-schema.js",
+    "preview": "vite preview --host 0.0.0.0"
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "^6.0.2",
+    "date-fns": "^4.3.0",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "lucide-react": "^1.16.0",
+    "pg": "^8.21.0",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6"
+  },
+  "devDependencies": {
+    "vite": "^8.0.14"
+  }
+}
