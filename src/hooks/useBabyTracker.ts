@@ -55,6 +55,8 @@ export const useBabyTracker = () => {
   const [activities, setActivities] = useState<ActivityRecord[]>(loadActivities);
   const [unit, setUnit] = useState(loadUnit);
   const [isApiConnected, setApiConnected] = useState(false);
+  const [isSavingProfile, setSavingProfile] = useState(false);
+  const [profileError, setProfileError] = useState('');
 
   useEffect(() => {
     let isMounted = true;
@@ -120,15 +122,23 @@ export const useBabyTracker = () => {
     return days;
   }, [activities]);
 
-  const setProfile = useCallback((nextProfile: BabyProfile) => {
+  const setProfile = useCallback(async (nextProfile: BabyProfile) => {
     setProfileState(nextProfile);
+    setSavingProfile(true);
+    setProfileError('');
 
-    saveProfileApi(nextProfile)
-      .then(({ profile: savedProfile }) => {
-        setProfileState(savedProfile);
-        setApiConnected(true);
-      })
-      .catch(() => setApiConnected(false));
+    try {
+      const { profile: savedProfile } = await saveProfileApi(nextProfile);
+      setProfileState(savedProfile);
+      setApiConnected(true);
+      return true;
+    } catch {
+      setApiConnected(false);
+      setProfileError('Shared Baby ID could not be created. Check that the API is running and DATABASE_URL points to Neon.');
+      return false;
+    } finally {
+      setSavingProfile(false);
+    }
   }, []);
 
   const joinProfile = useCallback(async (shareCode: string) => {
@@ -140,6 +150,7 @@ export const useBabyTracker = () => {
       setProfileState(joinedProfile);
       setActivities(joinedActivities);
       setApiConnected(true);
+      setProfileError('');
       return true;
     } catch {
       setApiConnected(false);
@@ -191,5 +202,7 @@ export const useBabyTracker = () => {
     removeRecord,
     joinProfile,
     isApiConnected,
+    isSavingProfile,
+    profileError,
   };
 };

@@ -41,6 +41,8 @@ const App = () => {
     addRecord,
     removeRecord,
     isApiConnected,
+    isSavingProfile,
+    profileError,
   } =
     useBabyTracker();
   const [isFeedModalOpen, setFeedModalOpen] = useState(false);
@@ -59,20 +61,23 @@ const App = () => {
     setFeedModalOpen(false);
   };
 
-  const handleSaveProfile = (event: FormEvent<HTMLFormElement>) => {
+  const handleSaveProfile = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
     const name = String(formData.get('babyName') ?? '').trim();
     const dateOfBirth = String(formData.get('dateOfBirth') ?? '').trim() || null;
 
-    setProfile({
+    const didSave = await setProfile({
       id: profile.id,
       shareCode: profile.shareCode,
       name,
       dateOfBirth,
       ageWeeks: ageInWeeks(dateOfBirth),
     });
-    setShowProfileForm(false);
+
+    if (didSave) {
+      setShowProfileForm(false);
+    }
   };
 
   const handleJoinProfile = async (event: FormEvent<HTMLFormElement>) => {
@@ -128,8 +133,8 @@ const App = () => {
         </div>
         <div className="share-card">
           <span>Baby ID</span>
-          <strong>{profile.shareCode ?? 'Create profile'}</strong>
-          <small>{isApiConnected ? 'Shared sync on' : 'Local mode'}</small>
+          <strong>{profile.shareCode ?? (isSavingProfile ? 'Creating...' : 'Create profile')}</strong>
+          <small>{profile.shareCode && isApiConnected ? 'Shared sync on' : 'Not shared yet'}</small>
         </div>
       </section>
 
@@ -159,17 +164,18 @@ const App = () => {
               </div>
               <div className="share-id-card">
                 <span>Baby ID</span>
-                <strong>{profile.shareCode ?? 'Created after saving'}</strong>
+                <strong>{profile.shareCode ?? (isSavingProfile ? 'Creating...' : 'Created after saving')}</strong>
               </div>
+              {profileError ? <p className="form-message wide">{profileError}</p> : null}
               <div className="button-row">
                 {profile.shareCode || profile.dateOfBirth ? (
                   <button type="button" className="secondary-button" onClick={() => setShowProfileForm(false)}>
                     Cancel
                   </button>
                 ) : null}
-                <button type="submit" className="primary-button">
+                <button type="submit" className="primary-button" disabled={isSavingProfile}>
                   <Save size={17} />
-                  Save profile
+                  {isSavingProfile ? 'Saving...' : 'Save profile'}
                 </button>
               </div>
             </form>
