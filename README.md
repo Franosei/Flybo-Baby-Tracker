@@ -1,6 +1,12 @@
 # Flybo Baby Tracker
 
-Flybo Baby Tracker is a mobile-first React app for quickly logging baby care events: feeds, wee, and poop. It is designed around large tap targets, automatic timestamps, daily summaries, and seven-day trend charts.
+Flybo Baby Tracker is a mobile-first React app for quickly logging baby care events: feeds, wee, and poop. It is designed around large tap targets, shared Baby IDs, automatic timestamps, daily summaries, age-based care checks, and seven-day trend charts.
+
+## Dashboard Preview
+
+![Flybo Baby Tracker dashboard summary](image/image%201.png)
+
+![Flybo Baby Tracker care check dashboard](image/image%202%20.png)
 
 ## What is included
 
@@ -18,6 +24,12 @@ Flybo Baby Tracker is a mobile-first React app for quickly logging baby care eve
 - Recent activity history with delete controls
 - Neon/Postgres API with local browser storage fallback
 - Neon-ready Postgres schema in `database/schema.sql`
+
+## How Sharing Works
+
+When a parent creates a baby profile, the backend creates a 6-digit Baby ID. Another parent can enter that Baby ID to open the same baby profile, view the same stats, and add new feed, wee, or poop records.
+
+Parents tracking more than one child can create another baby profile with the `New baby` button. Any Baby ID opened on the same device is saved locally in the baby switcher for quick switching.
 
 ## Environment
 
@@ -39,7 +51,7 @@ npm run dev
 
 The Vite dev server is configured for `http://127.0.0.1:4173` and proxies API calls to `http://127.0.0.1:4174`.
 
-When a parent saves a new baby profile, the API creates a 6-digit Baby ID. A second parent can enter that Baby ID in the profile panel to load the same baby profile, stats, and activity history.
+Run `npm run dev:api` and `npm run dev` in separate terminal windows during development.
 
 ## Build
 
