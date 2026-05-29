@@ -13,7 +13,7 @@ const PAGE_SIZE = 12;
 
 const formatTime = (timestamp: string) => {
   const date = new Date(timestamp);
-  return format(date, 'h:mm a');
+  return format(date, 'HH:mm');
 };
 
 const formatDateLabel = (timestamp: string) => {
