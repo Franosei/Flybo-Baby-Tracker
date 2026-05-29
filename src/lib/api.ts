@@ -46,6 +46,13 @@ export const createActivityApi = (type: ActivityType, details: FeedDetails | nul
     body: JSON.stringify({ type, details }),
   });
 
+export const updateActivityTimeApi = (record: ActivityRecord, timestamp: string, shareCode?: string | null) =>
+  request<{ record: ActivityRecord }>(`/api/activities/${record.id}?type=${record.type}`, {
+    method: 'PATCH',
+    headers: shareCodeHeaders(shareCode),
+    body: JSON.stringify({ timestamp }),
+  });
+
 export const deleteActivityApi = (record: ActivityRecord, shareCode?: string | null) =>
   request<{ ok: true }>(`/api/activities/${record.id}?type=${record.type}`, {
     method: 'DELETE',

@@ -42,6 +42,7 @@ const App = () => {
     todayStats,
     dailyStats,
     addRecord,
+    updateRecordTime,
     removeRecord,
     isApiConnected,
     isSavingProfile,
@@ -363,7 +364,7 @@ const App = () => {
 
       <DailyCharts dailyStats={dailyStats} unit={unit} />
 
-      <ActivityList activities={activities} onDelete={removeRecord} />
+      <ActivityList activities={activities} onDelete={removeRecord} onUpdateTime={updateRecordTime} />
       <FeedModal
         open={isFeedModalOpen}
         onClose={() => setFeedModalOpen(false)}

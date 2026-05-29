@@ -1,7 +1,14 @@
 import { format, isSameDay, subDays } from 'date-fns';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ActivityRecord, BabyProfile, DailyStats, FeedDetails } from '../types';
-import { createActivityApi, deleteActivityApi, fetchBootstrap, joinProfileApi, saveProfileApi } from '../lib/api';
+import {
+  createActivityApi,
+  deleteActivityApi,
+  fetchBootstrap,
+  joinProfileApi,
+  saveProfileApi,
+  updateActivityTimeApi,
+} from '../lib/api';
 import {
   defaultProfile,
   loadActivities,
@@ -16,6 +23,9 @@ import {
 import { toMilliliters } from '../lib/units';
 
 const nowIso = () => new Date().toISOString();
+
+const sortActivitiesByTime = (records: ActivityRecord[]) =>
+  [...records].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
 const emptyDailyStats = (date: Date): DailyStats => ({
   key: format(date, 'yyyy-MM-dd'),
@@ -92,7 +102,7 @@ export const useBabyTracker = () => {
         if (!isMounted) return;
         setProfileState(apiProfile);
         setKnownProfiles((currentProfiles) => upsertKnownProfile(currentProfiles, apiProfile));
-        setActivities(apiActivities);
+        setActivities(sortActivitiesByTime(apiActivities));
         setApiConnected(true);
       })
       .catch(() => {
@@ -176,7 +186,7 @@ export const useBabyTracker = () => {
     try {
       const { profile: joinedProfile, activities: joinedActivities } = await joinProfileApi(trimmedCode);
       setProfileState(joinedProfile);
-      setActivities(joinedActivities);
+      setActivities(sortActivitiesByTime(joinedActivities));
       rememberProfile(joinedProfile);
       setApiConnected(true);
       setProfileError('');
@@ -212,11 +222,31 @@ export const useBabyTracker = () => {
 
     createActivityApi(type, details, profile.shareCode)
       .then(({ record: savedRecord }) => {
-        setActivities((prev) => prev.map((entry) => (entry.id === record.id ? savedRecord : entry)));
+        setActivities((prev) => sortActivitiesByTime(prev.map((entry) => (entry.id === record.id ? savedRecord : entry))));
         setApiConnected(true);
       })
       .catch(() => setApiConnected(false));
   }, [profile.shareCode]);
+
+  const updateRecordTime = useCallback((id: string, timestamp: string) => {
+    const record = activities.find((entry) => entry.id === id);
+    if (!record) return;
+
+    setActivities((prev) => sortActivitiesByTime(
+      prev.map((entry) => (entry.id === id ? { ...entry, timestamp } : entry)),
+    ));
+
+    if (!profile.shareCode) return;
+
+    updateActivityTimeApi(record, timestamp, profile.shareCode)
+      .then(({ record: savedRecord }) => {
+        setActivities((prev) => sortActivitiesByTime(
+          prev.map((entry) => (entry.id === id ? savedRecord : entry)),
+        ));
+        setApiConnected(true);
+      })
+      .catch(() => setApiConnected(false));
+  }, [activities, profile.shareCode]);
 
   const removeRecord = useCallback((id: string) => {
     const record = activities.find((entry) => entry.id === id);
@@ -242,6 +272,7 @@ export const useBabyTracker = () => {
     todayStats,
     dailyStats,
     addRecord,
+    updateRecordTime,
     removeRecord,
     joinProfile,
     isApiConnected,

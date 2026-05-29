@@ -72,6 +72,13 @@ const parseProfile = (body) => {
   };
 };
 
+const parseTimestamp = (value) => {
+  if (typeof value !== 'string' || !value.trim()) return null;
+
+  const timestamp = new Date(value);
+  return Number.isNaN(timestamp.getTime()) ? null : timestamp;
+};
+
 const getBabyById = async (id) => {
   const result = await query('select * from baby_profiles where id = $1', [id]);
   return result.rows[0] ? toProfile(result.rows[0]) : null;
@@ -258,6 +265,62 @@ app.post('/api/activities', async (request, response, next) => {
       );
 
       response.status(201).json({ record: toNappyRecord(result.rows[0]) });
+      return;
+    }
+
+    response.status(400).json({ error: 'Invalid activity type' });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.patch('/api/activities/:id', async (request, response, next) => {
+  try {
+    const profile = await requireSharedBaby(request, response);
+    if (!profile) return;
+
+    const { id } = request.params;
+    const { type } = request.query;
+    const recordedAt = parseTimestamp(request.body?.timestamp);
+
+    if (!recordedAt) {
+      response.status(400).json({ error: 'Invalid timestamp' });
+      return;
+    }
+
+    if (type === 'feed') {
+      const result = await query(
+        `update feeding_records
+         set recorded_at = $1
+         where id = $2 and baby_id = $3
+         returning id, feed_type::text, duration_minutes, quantity, unit::text, recorded_at`,
+        [recordedAt, id, profile.id],
+      );
+
+      if (!result.rows[0]) {
+        response.status(404).json({ error: 'Activity not found' });
+        return;
+      }
+
+      response.json({ record: toFeedRecord(result.rows[0]) });
+      return;
+    }
+
+    if (type === 'wee' || type === 'poop') {
+      const result = await query(
+        `update nappy_records
+         set recorded_at = $1
+         where id = $2 and baby_id = $3 and nappy_type = $4
+         returning id, nappy_type::text, recorded_at`,
+        [recordedAt, id, profile.id, type],
+      );
+
+      if (!result.rows[0]) {
+        response.status(404).json({ error: 'Activity not found' });
+        return;
+      }
+
+      response.json({ record: toNappyRecord(result.rows[0]) });
       return;
     }
 
