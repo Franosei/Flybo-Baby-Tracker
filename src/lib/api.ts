@@ -46,11 +46,11 @@ export const createActivityApi = (type: ActivityType, details: FeedDetails | nul
     body: JSON.stringify({ type, details }),
   });
 
-export const updateActivityTimeApi = (record: ActivityRecord, timestamp: string, shareCode?: string | null) =>
+export const updateActivityTimeApi = (record: ActivityRecord, timestamp: string, details?: Partial<FeedDetails> | null, shareCode?: string | null) =>
   request<{ record: ActivityRecord }>(`/api/activities/${record.id}?type=${record.type}`, {
     method: 'PATCH',
     headers: shareCodeHeaders(shareCode),
-    body: JSON.stringify({ timestamp }),
+    body: JSON.stringify({ timestamp, details }),
   });
 
 export const deleteActivityApi = (record: ActivityRecord, shareCode?: string | null) =>

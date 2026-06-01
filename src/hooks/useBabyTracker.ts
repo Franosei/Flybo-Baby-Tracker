@@ -228,17 +228,21 @@ export const useBabyTracker = () => {
       .catch(() => setApiConnected(false));
   }, [profile.shareCode]);
 
-  const updateRecordTime = useCallback((id: string, timestamp: string) => {
+  const updateRecordTime = useCallback((id: string, timestamp: string, details?: Partial<FeedDetails> | null) => {
     const record = activities.find((entry) => entry.id === id);
     if (!record) return;
 
+    const nextDetails = details && record.details
+      ? { ...record.details, ...details }
+      : record.details;
+
     setActivities((prev) => sortActivitiesByTime(
-      prev.map((entry) => (entry.id === id ? { ...entry, timestamp } : entry)),
+      prev.map((entry) => (entry.id === id ? { ...entry, timestamp, details: nextDetails } : entry)),
     ));
 
     if (!profile.shareCode) return;
 
-    updateActivityTimeApi(record, timestamp, profile.shareCode)
+    updateActivityTimeApi(record, timestamp, details, profile.shareCode)
       .then(({ record: savedRecord }) => {
         setActivities((prev) => sortActivitiesByTime(
           prev.map((entry) => (entry.id === id ? savedRecord : entry)),

@@ -924,6 +924,22 @@ p {
   box-shadow: 0 0 0 4px rgba(15, 118, 110, 0.12);
 }
 
+.activity-amount-input {
+  width: 90px;
+  min-height: 40px;
+  padding: 8px 10px;
+  border: 1px solid #b9c6d2;
+  border-radius: 8px;
+  background: white;
+  color: var(--ink);
+  outline: none;
+}
+
+.activity-amount-input:focus {
+  border-color: var(--feed);
+  box-shadow: 0 0 0 4px rgba(15, 118, 110, 0.12);
+}
+
 .count-pill {
   min-width: 38px;
   min-height: 30px;

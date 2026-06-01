@@ -289,12 +289,19 @@ app.patch('/api/activities/:id', async (request, response, next) => {
     }
 
     if (type === 'feed') {
+      const rawAmount = request.body?.details?.amount;
+      const rawDuration = request.body?.details?.durationMinutes;
+      const amount = rawAmount != null && !Number.isNaN(Number(rawAmount)) ? Number(rawAmount) : null;
+      const durationMinutes = rawDuration != null && !Number.isNaN(Number(rawDuration)) ? Number(rawDuration) : null;
+
       const result = await query(
         `update feeding_records
-         set recorded_at = $1
-         where id = $2 and baby_id = $3
+         set recorded_at = $1,
+             quantity = coalesce($2::numeric, quantity),
+             duration_minutes = coalesce($3::integer, duration_minutes)
+         where id = $4 and baby_id = $5
          returning id, feed_type::text, duration_minutes, quantity, unit::text, recorded_at`,
-        [recordedAt, id, profile.id],
+        [recordedAt, amount, durationMinutes, id, profile.id],
       );
 
       if (!result.rows[0]) {
