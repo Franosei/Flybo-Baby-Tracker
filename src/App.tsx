@@ -5,6 +5,7 @@ import ActionButton from './components/ActionButton';
 import ActivityList from './components/ActivityList';
 import DailyCharts from './components/DailyCharts';
 import FeedModal from './components/FeedModal';
+import FoodAnalytics from './components/FoodAnalytics';
 import HealthCheck from './components/HealthCheck';
 import { useBabyTracker } from './hooks/useBabyTracker';
 import { ageInWeeks, ageLabelFromBirthDate } from './lib/age';
@@ -365,6 +366,8 @@ const App = () => {
       </section>
 
       <HealthCheck profile={profile} activities={activities} todayStats={todayStats} unit={unit} />
+
+      <FoodAnalytics activities={activities} />
 
       <DailyCharts dailyStats={dailyStats} unit={unit} />
 

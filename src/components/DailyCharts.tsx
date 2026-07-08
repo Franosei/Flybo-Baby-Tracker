@@ -7,7 +7,7 @@ import {
 } from '../lib/units';
 import type { DailyStats, Unit } from '../types';
 
-type ChartView = 'bottle' | 'breastfeeding' | 'nappies';
+type ChartView = 'bottle' | 'breastfeeding' | 'food' | 'nappies';
 
 interface DailyChartsProps {
   dailyStats: DailyStats[];
@@ -16,7 +16,8 @@ interface DailyChartsProps {
 
 const chartViews: { label: string; value: ChartView }[] = [
   { label: 'Milk', value: 'bottle' },
-  { label: 'Breastfeeding', value: 'breastfeeding' },
+  { label: 'Breast', value: 'breastfeeding' },
+  { label: 'Food', value: 'food' },
   { label: 'Nappies', value: 'nappies' },
 ];
 
@@ -41,6 +42,10 @@ const DailyCharts = ({ dailyStats, unit }: DailyChartsProps) => {
   );
   const maxNappyCount = useMemo(
     () => Math.max(...dailyStats.map((day) => Math.max(day.weeCount, day.poopCount)), 1),
+    [dailyStats],
+  );
+  const maxFoodCount = useMemo(
+    () => Math.max(...dailyStats.map((day) => day.foodCount), 1),
     [dailyStats],
   );
 
@@ -163,6 +168,26 @@ const DailyCharts = ({ dailyStats, unit }: DailyChartsProps) => {
                   <strong>{day.poopCount}</strong>
                 </div>
               </div>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      {view === 'food' ? (
+        <div className="chart-list" role="list">
+          {dailyStats.map((day) => (
+            <div className="chart-row" key={day.key} role="listitem">
+              <div className="chart-date">
+                <strong>{day.dayLabel}</strong>
+                <span>{day.dateLabel}</span>
+              </div>
+              <div className="bar-track" aria-label={`${day.dateLabel} food logs`}>
+                <span
+                  className="bar-fill food"
+                  style={{ width: `${widthFor(day.foodCount, maxFoodCount)}%` }}
+                />
+              </div>
+              <strong className="chart-value">{day.foodCount}</strong>
             </div>
           ))}
         </div>
