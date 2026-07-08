@@ -19,7 +19,7 @@ const statusIcon = {
 const statusLabel = {
   good: 'On track',
   watch: 'Watch',
-  attention: 'Attention',
+  attention: 'Review',
   info: 'Guide',
 };
 

@@ -21,6 +21,8 @@ interface AgeBand {
   breastFeeds?: Range;
   formulaPerFeedMl?: Range;
   bottleTotalMl?: Range;
+  foodStage?: 'not-yet' | 'nearly-ready' | 'starting' | 'building' | 'established' | 'toddler';
+  foodTarget?: string;
   weeMin: number;
   poopBreastfed?: Range;
   poopFormula?: Range;
@@ -49,6 +51,7 @@ const ageBands: AgeBand[] = [
     label: '0-1 week',
     breastFeeds: { min: 8, max: 12 },
     formulaPerFeedMl: { min: 30, max: 60 },
+    foodStage: 'not-yet',
     weeMin: 6,
     poopBreastfed: { min: 3, max: 8 },
     poopFormula: { min: 1, max: 4 },
@@ -60,6 +63,7 @@ const ageBands: AgeBand[] = [
     breastFeeds: { min: 8, max: 12 },
     formulaPerFeedMl: { min: 60, max: 90 },
     bottleTotalMl: { min: 450, max: 700 },
+    foodStage: 'not-yet',
     weeMin: 6,
     poopBreastfed: { min: 3 },
     poopFormula: { min: 1, max: 3 },
@@ -71,6 +75,7 @@ const ageBands: AgeBand[] = [
     breastFeeds: { min: 7, max: 9 },
     formulaPerFeedMl: { min: 90, max: 120 },
     bottleTotalMl: { min: 600, max: 900 },
+    foodStage: 'not-yet',
     weeMin: 6,
     poopFormula: { min: 1, max: 2 },
     poopNote: 'Breastfed poop can be every feed or once every few days if soft.',
@@ -81,6 +86,7 @@ const ageBands: AgeBand[] = [
     breastFeeds: { min: 6, max: 8 },
     formulaPerFeedMl: { min: 120, max: 180 },
     bottleTotalMl: { min: 700, max: 1000 },
+    foodStage: 'not-yet',
     weeMin: 5,
     poopFormula: { min: 1, max: 1 },
     poopNote: 'Poop may be variable for breastfed babies, but should stay soft.',
@@ -91,23 +97,51 @@ const ageBands: AgeBand[] = [
     breastFeeds: { min: 5, max: 8 },
     formulaPerFeedMl: { min: 150, max: 200 },
     bottleTotalMl: { min: 750, max: 1000 },
+    foodStage: 'nearly-ready',
+    foodTarget: 'around 6 months',
     weeMin: 5,
     poopFormula: { min: 1, max: 1 },
     poopNote: 'Similar to 3-4 months before solids; soft yellow/brown stools are typical.',
   },
   {
-    id: '6-12-months',
-    label: '6-12 months',
+    id: 'around-6-months',
+    label: 'around 6 months',
     bottleTotalMl: { min: 600, max: 900 },
+    foodStage: 'starting',
+    foodTarget: 'small tastes once/day',
     weeMin: 4,
     poopBreastfed: { min: 1, max: 2 },
     poopFormula: { min: 1, max: 2 },
     poopNote: 'Colour varies with food; hard pellets can suggest constipation.',
   },
   {
+    id: '7-9-months',
+    label: '7-9 months',
+    bottleTotalMl: { min: 600, max: 900 },
+    foodStage: 'building',
+    foodTarget: 'building toward 3 meals/day',
+    weeMin: 4,
+    poopBreastfed: { min: 1, max: 2 },
+    poopFormula: { min: 1, max: 2 },
+    poopNote: 'Food can change colour and timing; comfort and texture matter most.',
+  },
+  {
+    id: '10-12-months',
+    label: '10-12 months',
+    bottleTotalMl: { min: 400, max: 700 },
+    foodStage: 'established',
+    foodTarget: '3 meals/day plus milk',
+    weeMin: 4,
+    poopBreastfed: { min: 1, max: 2 },
+    poopFormula: { min: 1, max: 2 },
+    poopNote: 'Food can change colour and timing; comfort and texture matter most.',
+  },
+  {
     id: '12-24-months',
     label: '12-24 months',
     bottleTotalMl: { min: 300, max: 400 },
+    foodStage: 'toddler',
+    foodTarget: '3 meals + healthy snacks',
     weeMin: 4,
     poopBreastfed: { min: 1, max: 2 },
     poopFormula: { min: 1, max: 2 },
@@ -148,9 +182,11 @@ const getAgeBand = (profile: BabyProfile) => {
 
   if (months < 3) return ageBands[2];
   if (months < 5) return ageBands[3];
-  if (months < 7) return ageBands[4];
-  if (months < 12) return ageBands[5];
-  if (months < 24) return ageBands[6];
+  if (months < 6) return ageBands[4];
+  if (months < 7) return ageBands[5];
+  if (months < 10) return ageBands[6];
+  if (months < 12) return ageBands[7];
+  if (months < 24) return ageBands[8];
 
   return null;
 };
@@ -196,11 +232,93 @@ const statusFromItems = (items: HealthCheckItem[]): HealthStatus => {
   return 'info';
 };
 
-const summaryFromStatus = (status: HealthStatus) => {
-  if (status === 'good') return 'Today looks in range for the logged data.';
-  if (status === 'watch') return 'Some numbers are outside the usual range.';
-  if (status === 'attention') return 'One or more basics are below the usual range.';
+const foodIsAgeExpected = (band: AgeBand) => (
+  band.foodStage === 'starting'
+  || band.foodStage === 'building'
+  || band.foodStage === 'established'
+  || band.foodStage === 'toddler'
+);
+
+const foodIsUsefulContext = (band: AgeBand, foodCount: number) => foodCount > 0 && foodIsAgeExpected(band);
+
+const softenForFoodContext = (status: HealthStatus, band: AgeBand, foodCount: number) => (
+  status === 'attention' && foodIsUsefulContext(band, foodCount) ? 'watch' : status
+);
+
+const summaryFromStatus = (status: HealthStatus, hasFoodContext: boolean) => {
+  if (status === 'good') return hasFoodContext
+    ? 'Food, milk, and nappies look on track for the logged data.'
+    : 'Today looks in range for the logged data.';
+  if (status === 'watch') return hasFoodContext
+    ? 'Food is included in today’s context; a few items are worth watching calmly.'
+    : 'Some numbers are outside the usual range.';
+  if (status === 'attention') return hasFoodContext
+    ? 'Food is included, but one care signal still needs a calm review.'
+    : 'One or more basics are below the usual range.';
   return 'Add more logs to compare today with the age guide.';
+};
+
+const foodGuidanceItem = (band: AgeBand, foodCount: number): HealthCheckItem | null => {
+  if (!band.foodStage) return null;
+
+  if (band.foodStage === 'not-yet') {
+    if (foodCount === 0) return null;
+
+    return {
+      label: 'Food',
+      value: `${foodCount}`,
+      target: 'milk only before about 6 months',
+      status: 'watch',
+      message: 'Foods are usually started around 6 months. If this was advised, keep following that guidance.',
+    };
+  }
+
+  if (band.foodStage === 'nearly-ready') {
+    if (foodCount === 0) return null;
+
+    return {
+      label: 'Food',
+      value: `${foodCount}`,
+      target: band.foodTarget ?? 'around 6 months',
+      status: 'info',
+      message: 'Small tastes can happen near readiness, but milk is still the main nutrition.',
+    };
+  }
+
+  if (band.foodStage === 'starting') {
+    return {
+      label: 'Food',
+      value: `${foodCount}`,
+      target: band.foodTarget ?? 'small tastes',
+      status: foodCount > 0 ? 'good' : 'info',
+      message: foodCount > 0
+        ? 'Food is included in today’s check; small amounts are normal while learning.'
+        : 'No food logged; small tastes can start when baby is ready.',
+    };
+  }
+
+  if (band.foodStage === 'building') {
+    return {
+      label: 'Food',
+      value: `${foodCount}`,
+      target: band.foodTarget ?? 'building meals',
+      status: foodCount > 0 ? 'good' : 'info',
+      message: foodCount > 0
+        ? 'Food supports the day now; milk still matters during the first year.'
+        : 'No food logged; babies can vary while learning, so keep offering variety.',
+    };
+  }
+
+  const hasEstablishedFood = foodCount >= 2;
+  return {
+    label: 'Food',
+    value: `${foodCount}`,
+    target: band.foodTarget ?? 'regular meals',
+    status: hasEstablishedFood ? 'good' : foodCount > 0 ? 'info' : 'watch',
+    message: foodCount > 0
+      ? 'Food is a meaningful part of intake at this age; fluids and nappies still help show hydration.'
+      : 'Regular meals are expected at this age; add food logs to complete the check.',
+  };
 };
 
 export const buildHealthCheck = (
@@ -234,6 +352,7 @@ export const buildHealthCheck = (
   const totalMilkMidpointMl = bottleTotalMl + breastfeedingEstimateMidpointMl(todayStats.breastfeedingMinutes);
   const hasBreastEstimate = todayStats.breastfeedingMinutes > 0;
   const hasAnyMilk = bottleTotalMl > 0 || hasBreastEstimate;
+  const hasFoodContext = foodIsUsefulContext(band, todayStats.foodCount);
   const formulaOnly = formulaRecords.length > 0 && breastfeedingCount === 0 && expressedRecords.length === 0;
   const weeMin = expectedWeeMinimum(profile, band);
 
@@ -247,7 +366,8 @@ export const buildHealthCheck = (
   const items: HealthCheckItem[] = [];
 
   if (band.bottleTotalMl && hasAnyMilk) {
-    const status = rangeStatus(totalMilkMidpointMl, band.bottleTotalMl);
+    const rawStatus = rangeStatus(totalMilkMidpointMl, band.bottleTotalMl);
+    const status = softenForFoodContext(rawStatus, band, todayStats.foodCount);
     items.push({
       label: 'Milk intake',
       value: hasBreastEstimate
@@ -259,7 +379,19 @@ export const buildHealthCheck = (
         ? 'Breastfeeding is estimated as 30 min around 60-90 ml.'
         : status === 'good'
           ? 'Bottle total is in the usual range.'
-          : 'Compare with hunger cues and weight gain.',
+          : hasFoodContext
+            ? 'Food is part of intake now; still check milk, drinks, cues, and wet nappies.'
+            : 'Compare with hunger cues and weight gain.',
+    });
+  } else if (band.bottleTotalMl && foodIsAgeExpected(band)) {
+    items.push({
+      label: band.foodStage === 'toddler' ? 'Milk/drinks' : 'Milk feeds',
+      value: todayStats.foodCount > 0 ? 'Food logged' : '0 logged',
+      target: band.foodStage === 'toddler' ? 'milk or water with meals' : rangeLabel(band.bottleTotalMl, unit),
+      status: todayStats.foodCount > 0 ? 'info' : 'watch',
+      message: todayStats.foodCount > 0
+        ? 'Food is included in today’s check; log milk or drinks if you want this guide to compare intake.'
+        : 'No milk or food logged yet, so today’s intake picture may be incomplete.',
     });
   } else if (band.breastFeeds) {
     const status = milkFeedRecords.length === 0 ? 'attention' : rangeStatus(milkFeedRecords.length, band.breastFeeds);
@@ -271,6 +403,9 @@ export const buildHealthCheck = (
       message: breastfeedingCount > 0 ? 'Breastfeeding is usually measured by sessions and baby cues.' : 'Log feeds to improve this check.',
     });
   }
+
+  const foodItem = foodGuidanceItem(band, todayStats.foodCount);
+  if (foodItem) items.push(foodItem);
 
   if (band.formulaPerFeedMl && averageBottleMl > 0) {
     const status = rangeStatus(averageBottleMl, band.formulaPerFeedMl);
@@ -290,18 +425,23 @@ export const buildHealthCheck = (
     status: compareMin(todayStats.weeCount, weeMin) ? 'good' : 'attention',
     message: compareMin(todayStats.weeCount, weeMin)
       ? 'Wet nappies look on track.'
-      : 'Low wet nappies can be a hydration warning sign.',
+      : hasFoodContext
+        ? 'Food is included, but wet nappies still matter for hydration. Check fluids and symptoms.'
+        : 'Low wet nappies can be a hydration warning sign.',
   });
 
   const poopRange = formulaOnly ? band.poopFormula : band.poopBreastfed ?? band.poopFormula;
   if (poopRange) {
-    const status = rangeStatus(todayStats.poopCount, poopRange);
+    const rawStatus = rangeStatus(todayStats.poopCount, poopRange);
+    const status = softenForFoodContext(rawStatus, band, todayStats.foodCount);
     items.push({
       label: 'Poop',
       value: `${todayStats.poopCount}`,
       target: `${rangeLabel(poopRange)}/day`,
       status,
-      message: status === 'good' ? band.poopNote : 'Texture, comfort, and colour matter as much as count.',
+      message: status === 'good' || hasFoodContext
+        ? band.poopNote
+        : 'Texture, comfort, and colour matter as much as count.',
     });
   } else {
     items.push({
@@ -318,7 +458,7 @@ export const buildHealthCheck = (
   return {
     title: 'Care check',
     status,
-    summary: summaryFromStatus(status),
+    summary: summaryFromStatus(status, hasFoodContext),
     ageBandLabel: band.label,
     items,
   };
