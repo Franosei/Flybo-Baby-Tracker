@@ -889,9 +889,12 @@ p {
 }
 
 .activity-value {
-  flex: 0 0 auto;
+  flex: 0 1 auto;
+  max-width: min(260px, 44%);
   color: var(--ink);
   font-weight: 900;
+  overflow-wrap: anywhere;
+  text-align: right;
 }
 
 .activity-actions {
@@ -924,8 +927,8 @@ p {
   box-shadow: 0 0 0 4px rgba(15, 118, 110, 0.12);
 }
 
-.activity-amount-input {
-  width: 90px;
+.activity-amount-input,
+.activity-food-input {
   min-height: 40px;
   padding: 8px 10px;
   border: 1px solid #b9c6d2;
@@ -935,7 +938,16 @@ p {
   outline: none;
 }
 
-.activity-amount-input:focus {
+.activity-amount-input {
+  width: 90px;
+}
+
+.activity-food-input {
+  width: 170px;
+}
+
+.activity-amount-input:focus,
+.activity-food-input:focus {
   border-color: var(--feed);
   box-shadow: 0 0 0 4px rgba(15, 118, 110, 0.12);
 }
@@ -984,7 +996,7 @@ p {
 
 .choice-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
 }
 
@@ -1086,6 +1098,11 @@ p {
 
   .activity-edit-form {
     flex-wrap: wrap;
+  }
+
+  .activity-value {
+    max-width: 100%;
+    text-align: left;
   }
 
   .activity-time-input {

@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useMemo, useState, type FormEvent } from 'react';
 import { format, isSameDay } from 'date-fns';
-import { Activity, Check, ChevronLeft, ChevronRight, Droplet, Milk, Pencil, X } from 'lucide-react';
+import { Activity, Check, ChevronLeft, ChevronRight, Droplet, Milk, Pencil, Utensils, X } from 'lucide-react';
 import type { ActivityRecord, FeedDetails } from '../types';
 
 interface ActivityListProps {
@@ -36,11 +36,10 @@ const toIsoTimestamp = (value: string) => {
 
 const typeLabel = (record: ActivityRecord) => {
   if (record.type === 'feed') {
-    return record.details?.feedType === 'breastfeeding'
-      ? 'Breastfeeding'
-      : record.details?.feedType === 'expressed'
-        ? 'Expressed milk'
-        : 'Formula';
+    if (record.details?.feedType === 'breastfeeding') return 'Breastfeeding';
+    if (record.details?.feedType === 'expressed') return 'Expressed milk';
+    if (record.details?.feedType === 'food') return 'Food';
+    return 'Formula';
   }
 
   return record.type === 'wee' ? 'Wee' : 'Poop';
@@ -53,10 +52,15 @@ const detailsLabel = (record: ActivityRecord) => {
     return `${record.details.durationMinutes ?? 0} min`;
   }
 
+  if (record.details.feedType === 'food') {
+    return record.details.foodName ?? 'Food';
+  }
+
   return `${record.details.amount ?? 0} ${record.details.unit ?? 'ml'}`;
 };
 
 const iconForRecord = (record: ActivityRecord) => {
+  if (record.type === 'feed' && record.details?.feedType === 'food') return <Utensils size={18} />;
   if (record.type === 'feed') return <Milk size={18} />;
   if (record.type === 'wee') return <Droplet size={18} />;
   return <Activity size={18} />;
@@ -67,6 +71,7 @@ const ActivityList = ({ activities, onDelete, onUpdateTime }: ActivityListProps)
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draftTime, setDraftTime] = useState('');
   const [draftValue, setDraftValue] = useState('');
+  const [draftFoodName, setDraftFoodName] = useState('');
 
   const totalPages = Math.max(1, Math.ceil(activities.length / PAGE_SIZE));
 
@@ -86,12 +91,20 @@ const ActivityList = ({ activities, onDelete, onUpdateTime }: ActivityListProps)
     setEditingId(record.id);
     setDraftTime(toDateTimeInputValue(record.timestamp));
     if (record.type === 'feed' && record.details) {
+      if (record.details.feedType === 'food') {
+        setDraftValue('');
+        setDraftFoodName(record.details.foodName ?? '');
+        return;
+      }
+
       const raw = record.details.feedType === 'breastfeeding'
         ? record.details.durationMinutes
         : record.details.amount;
       setDraftValue(raw != null ? String(raw) : '');
+      setDraftFoodName('');
     } else {
       setDraftValue('');
+      setDraftFoodName('');
     }
   };
 
@@ -99,6 +112,7 @@ const ActivityList = ({ activities, onDelete, onUpdateTime }: ActivityListProps)
     setEditingId(null);
     setDraftTime('');
     setDraftValue('');
+    setDraftFoodName('');
   };
 
   const saveEditedTime = (event: FormEvent<HTMLFormElement>, record: ActivityRecord) => {
@@ -107,12 +121,18 @@ const ActivityList = ({ activities, onDelete, onUpdateTime }: ActivityListProps)
     if (!nextTimestamp) return;
 
     let details: Partial<FeedDetails> | undefined;
-    if (record.type === 'feed' && record.details && draftValue !== '') {
-      const numeric = parseFloat(draftValue);
-      if (!Number.isNaN(numeric) && numeric > 0) {
-        details = record.details.feedType === 'breastfeeding'
-          ? { durationMinutes: Math.round(numeric) }
-          : { amount: numeric };
+    if (record.type === 'feed' && record.details) {
+      if (record.details.feedType === 'food') {
+        const foodName = draftFoodName.trim();
+        if (!foodName) return;
+        details = { foodName };
+      } else if (draftValue !== '') {
+        const numeric = parseFloat(draftValue);
+        if (!Number.isNaN(numeric) && numeric > 0) {
+          details = record.details.feedType === 'breastfeeding'
+            ? { durationMinutes: Math.round(numeric) }
+            : { amount: numeric };
+        }
       }
     }
 
@@ -193,16 +213,29 @@ const ActivityList = ({ activities, onDelete, onUpdateTime }: ActivityListProps)
                             required
                           />
                           {record.type === 'feed' && record.details ? (
-                            <input
-                              className="activity-amount-input"
-                              type="number"
-                              min="0"
-                              step={record.details.feedType === 'breastfeeding' ? '1' : '0.1'}
-                              value={draftValue}
-                              onChange={(event) => setDraftValue(event.currentTarget.value)}
-                              placeholder={record.details.feedType === 'breastfeeding' ? 'min' : (record.details.unit ?? 'ml')}
-                              aria-label={record.details.feedType === 'breastfeeding' ? 'Duration in minutes' : `Amount in ${record.details.unit ?? 'ml'}`}
-                            />
+                            record.details.feedType === 'food' ? (
+                              <input
+                                className="activity-food-input"
+                                type="text"
+                                value={draftFoodName}
+                                maxLength={80}
+                                onChange={(event) => setDraftFoodName(event.currentTarget.value)}
+                                placeholder="Food eaten"
+                                aria-label="Kind of food eaten"
+                                required
+                              />
+                            ) : (
+                              <input
+                                className="activity-amount-input"
+                                type="number"
+                                min="0"
+                                step={record.details.feedType === 'breastfeeding' ? '1' : '0.1'}
+                                value={draftValue}
+                                onChange={(event) => setDraftValue(event.currentTarget.value)}
+                                placeholder={record.details.feedType === 'breastfeeding' ? 'min' : (record.details.unit ?? 'ml')}
+                                aria-label={record.details.feedType === 'breastfeeding' ? 'Duration in minutes' : `Amount in ${record.details.unit ?? 'ml'}`}
+                              />
+                            )
                           ) : null}
                           <button type="submit" className="icon-button confirm" aria-label="Save activity time">
                             <Check size={17} />

@@ -2,10 +2,12 @@ create extension if not exists pgcrypto;
 
 do $$
 begin
-  create type feed_type as enum ('breastfeeding', 'expressed', 'formula');
+  create type feed_type as enum ('breastfeeding', 'expressed', 'formula', 'food');
 exception
   when duplicate_object then null;
 end $$;
+
+alter type feed_type add value if not exists 'food';
 
 do $$
 begin
@@ -45,6 +47,7 @@ create table if not exists feeding_records (
   duration_minutes integer check (duration_minutes > 0),
   quantity numeric(8, 2) check (quantity > 0),
   unit feed_unit,
+  food_name text,
   quantity_ml numeric(10, 2) generated always as (
     case
       when unit = 'oz' then quantity * 29.5735
@@ -55,10 +58,22 @@ create table if not exists feeding_records (
   recorded_at timestamptz not null default now(),
   created_at timestamptz not null default now(),
   constraint feeding_measurement_required check (
-    (feed_type = 'breastfeeding' and duration_minutes is not null and quantity is null and unit is null)
+    (feed_type = 'breastfeeding' and duration_minutes is not null and quantity is null and unit is null and food_name is null)
     or
-    (feed_type in ('expressed', 'formula') and quantity is not null and unit is not null and duration_minutes is null)
+    (feed_type in ('expressed', 'formula') and quantity is not null and unit is not null and duration_minutes is null and food_name is null)
+    or
+    (feed_type::text = 'food' and food_name is not null and length(trim(food_name)) > 0 and duration_minutes is null and quantity is null and unit is null)
   )
+);
+
+alter table feeding_records add column if not exists food_name text;
+alter table feeding_records drop constraint if exists feeding_measurement_required;
+alter table feeding_records add constraint feeding_measurement_required check (
+  (feed_type = 'breastfeeding' and duration_minutes is not null and quantity is null and unit is null and food_name is null)
+  or
+  (feed_type in ('expressed', 'formula') and quantity is not null and unit is not null and duration_minutes is null and food_name is null)
+  or
+  (feed_type::text = 'food' and food_name is not null and length(trim(food_name)) > 0 and duration_minutes is null and quantity is null and unit is null)
 );
 
 create table if not exists nappy_records (

@@ -47,6 +47,7 @@ const toFeedRecord = (row) => ({
     durationMinutes: row.duration_minutes ?? undefined,
     amount: row.quantity === null ? undefined : Number(row.quantity),
     unit: row.unit ?? undefined,
+    foodName: row.food_name ?? undefined,
   },
 });
 
@@ -78,6 +79,10 @@ const parseTimestamp = (value) => {
   const timestamp = new Date(value);
   return Number.isNaN(timestamp.getTime()) ? null : timestamp;
 };
+
+const parseFoodName = (value) => (
+  typeof value === 'string' ? value.trim().slice(0, 80) : ''
+);
 
 const getBabyById = async (id) => {
   const result = await query('select * from baby_profiles where id = $1', [id]);
@@ -127,7 +132,7 @@ const listActivities = async (babyId) => {
 
   const [feedingResult, nappyResult] = await Promise.all([
     query(
-      `select id, feed_type::text, duration_minutes, quantity, unit::text, recorded_at
+      `select id, feed_type::text, duration_minutes, quantity, unit::text, food_name, recorded_at
        from feeding_records
        where baby_id = $1`,
       [babyId],
@@ -232,8 +237,26 @@ app.post('/api/activities', async (request, response, next) => {
     const { type, details } = request.body;
 
     if (type === 'feed') {
-      if (!details || !['breastfeeding', 'expressed', 'formula'].includes(details.feedType)) {
+      if (!details || !['breastfeeding', 'expressed', 'formula', 'food'].includes(details.feedType)) {
         response.status(400).json({ error: 'Invalid feed details' });
+        return;
+      }
+
+      if (details.feedType === 'food') {
+        const foodName = parseFoodName(details.foodName);
+        if (!foodName) {
+          response.status(400).json({ error: 'Food name is required' });
+          return;
+        }
+
+        const result = await query(
+          `insert into feeding_records (baby_id, feed_type, food_name)
+           values ($1, $2, $3)
+           returning id, feed_type::text, duration_minutes, quantity, unit::text, food_name, recorded_at`,
+          [profile.id, details.feedType, foodName],
+        );
+
+        response.status(201).json({ record: toFeedRecord(result.rows[0]) });
         return;
       }
 
@@ -242,13 +265,13 @@ app.post('/api/activities', async (request, response, next) => {
           ? await query(
               `insert into feeding_records (baby_id, feed_type, duration_minutes)
                values ($1, $2, $3)
-               returning id, feed_type::text, duration_minutes, quantity, unit::text, recorded_at`,
+               returning id, feed_type::text, duration_minutes, quantity, unit::text, food_name, recorded_at`,
               [profile.id, details.feedType, Number(details.durationMinutes)],
             )
           : await query(
               `insert into feeding_records (baby_id, feed_type, quantity, unit)
                values ($1, $2, $3, $4)
-               returning id, feed_type::text, duration_minutes, quantity, unit::text, recorded_at`,
+               returning id, feed_type::text, duration_minutes, quantity, unit::text, food_name, recorded_at`,
               [profile.id, details.feedType, Number(details.amount), details.unit],
             );
 
@@ -291,17 +314,28 @@ app.patch('/api/activities/:id', async (request, response, next) => {
     if (type === 'feed') {
       const rawAmount = request.body?.details?.amount;
       const rawDuration = request.body?.details?.durationMinutes;
+      const rawFoodName = request.body?.details?.foodName;
       const amount = rawAmount != null && !Number.isNaN(Number(rawAmount)) ? Number(rawAmount) : null;
       const durationMinutes = rawDuration != null && !Number.isNaN(Number(rawDuration)) ? Number(rawDuration) : null;
+      const foodName = rawFoodName == null ? null : parseFoodName(rawFoodName);
+
+      if (rawFoodName != null && !foodName) {
+        response.status(400).json({ error: 'Food name is required' });
+        return;
+      }
 
       const result = await query(
         `update feeding_records
          set recorded_at = $1,
              quantity = coalesce($2::numeric, quantity),
-             duration_minutes = coalesce($3::integer, duration_minutes)
-         where id = $4 and baby_id = $5
-         returning id, feed_type::text, duration_minutes, quantity, unit::text, recorded_at`,
-        [recordedAt, amount, durationMinutes, id, profile.id],
+             duration_minutes = coalesce($3::integer, duration_minutes),
+             food_name = case
+               when feed_type::text = 'food' then coalesce($4::text, food_name)
+               else food_name
+             end
+         where id = $5 and baby_id = $6
+         returning id, feed_type::text, duration_minutes, quantity, unit::text, food_name, recorded_at`,
+        [recordedAt, amount, durationMinutes, foodName, id, profile.id],
       );
 
       if (!result.rows[0]) {

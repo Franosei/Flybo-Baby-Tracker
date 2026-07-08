@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Milk, Timer, X } from 'lucide-react';
+import { Milk, Timer, Utensils, X } from 'lucide-react';
 import { convertVolumeInput } from '../lib/units';
 import type { FeedDetails, FeedType, Unit } from '../types';
 
@@ -15,20 +15,26 @@ const feedOptions: { label: string; value: FeedType; shortLabel: string }[] = [
   { label: 'Breastfeeding', value: 'breastfeeding', shortLabel: 'Breast' },
   { label: 'Expressed breast milk', value: 'expressed', shortLabel: 'Expressed' },
   { label: 'Formula', value: 'formula', shortLabel: 'Formula' },
+  { label: 'Food', value: 'food', shortLabel: 'Food' },
 ];
 
 const FeedModal = ({ open, onClose, onSave, unit, setUnit }: FeedModalProps) => {
   const [feedType, setFeedType] = useState<FeedType>('breastfeeding');
   const [durationMinutes, setDurationMinutes] = useState(20);
   const [amount, setAmount] = useState(120);
+  const [foodName, setFoodName] = useState('');
 
   const canSave = useMemo(() => {
     if (feedType === 'breastfeeding') {
       return durationMinutes > 0;
     }
 
+    if (feedType === 'food') {
+      return foodName.trim().length > 0;
+    }
+
     return amount > 0;
-  }, [feedType, durationMinutes, amount]);
+  }, [feedType, durationMinutes, amount, foodName]);
 
   const handleUnitChange = (nextUnit: Unit) => {
     setAmount((currentAmount) => convertVolumeInput(currentAmount, unit, nextUnit));
@@ -38,15 +44,24 @@ const FeedModal = ({ open, onClose, onSave, unit, setUnit }: FeedModalProps) => 
   const handleSave = () => {
     if (!canSave) return;
 
-    onSave(
-      feedType === 'breastfeeding'
-        ? { feedType, durationMinutes }
-        : { feedType, amount, unit },
-    );
+    const details: FeedDetails = feedType === 'breastfeeding'
+      ? { feedType, durationMinutes }
+      : feedType === 'food'
+        ? { feedType, foodName: foodName.trim() }
+        : { feedType, amount, unit };
+
+    onSave(details);
 
     setDurationMinutes(20);
     setAmount(unit === 'oz' ? 4 : 120);
+    setFoodName('');
     setFeedType('breastfeeding');
+  };
+
+  const renderFeedIcon = (value: FeedType) => {
+    if (value === 'breastfeeding') return <Timer size={18} />;
+    if (value === 'food') return <Utensils size={18} />;
+    return <Milk size={18} />;
   };
 
   if (!open) return null;
@@ -82,7 +97,7 @@ const FeedModal = ({ open, onClose, onSave, unit, setUnit }: FeedModalProps) => 
                 aria-label={option.label}
                 aria-pressed={feedType === option.value}
               >
-                {option.value === 'breastfeeding' ? <Timer size={18} /> : <Milk size={18} />}
+                {renderFeedIcon(option.value)}
                 <span>{option.shortLabel}</span>
               </button>
             ))}
@@ -99,6 +114,18 @@ const FeedModal = ({ open, onClose, onSave, unit, setUnit }: FeedModalProps) => 
               min={1}
               inputMode="numeric"
               onChange={(event) => setDurationMinutes(Number(event.target.value))}
+            />
+          </div>
+        ) : feedType === 'food' ? (
+          <div className="form-group">
+            <label htmlFor="foodName">Kind of food</label>
+            <input
+              id="foodName"
+              type="text"
+              value={foodName}
+              maxLength={80}
+              placeholder="Banana, rice, yoghurt..."
+              onChange={(event) => setFoodName(event.target.value)}
             />
           </div>
         ) : (
@@ -139,7 +166,7 @@ const FeedModal = ({ open, onClose, onSave, unit, setUnit }: FeedModalProps) => 
             Cancel
           </button>
           <button type="submit" className="primary-button" disabled={!canSave}>
-            Save feed
+            {feedType === 'food' ? 'Save food' : 'Save feed'}
           </button>
         </div>
       </form>

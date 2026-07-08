@@ -349,8 +349,12 @@ const App = () => {
             <strong>{formatVolume(bottleTotalMl, unit)}</strong>
           </div>
           <div>
-            <span>Feed sessions</span>
+            <span>Feed and food</span>
             <strong>{todayStats.feedCount}</strong>
+          </div>
+          <div>
+            <span>Food logged</span>
+            <strong>{todayStats.foodCount}</strong>
           </div>
           <div>
             <span>Total entries</span>

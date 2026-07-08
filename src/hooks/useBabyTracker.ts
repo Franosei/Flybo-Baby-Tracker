@@ -34,6 +34,7 @@ const emptyDailyStats = (date: Date): DailyStats => ({
   expressedMl: 0,
   formulaMl: 0,
   breastfeedingMinutes: 0,
+  foodCount: 0,
   weeCount: 0,
   poopCount: 0,
   feedCount: 0,
@@ -53,6 +54,11 @@ const addRecordToStats = (stats: DailyStats, entry: ActivityRecord) => {
   stats.feedCount += 1;
 
   if (!entry.details) return;
+
+  if (entry.details.feedType === 'food') {
+    stats.foodCount += 1;
+    return;
+  }
 
   if (entry.details.feedType === 'breastfeeding') {
     stats.breastfeedingMinutes += entry.details.durationMinutes ?? 0;

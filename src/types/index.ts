@@ -1,4 +1,4 @@
-export type FeedType = 'breastfeeding' | 'expressed' | 'formula';
+export type FeedType = 'breastfeeding' | 'expressed' | 'formula' | 'food';
 export type Unit = 'ml' | 'oz';
 export type ActivityType = 'feed' | 'wee' | 'poop';
 
@@ -7,6 +7,7 @@ export interface FeedDetails {
   durationMinutes?: number;
   amount?: number;
   unit?: Unit;
+  foodName?: string;
 }
 
 export interface ActivityRecord {
@@ -31,6 +32,7 @@ export interface DailyStats {
   expressedMl: number;
   formulaMl: number;
   breastfeedingMinutes: number;
+  foodCount: number;
   weeCount: number;
   poopCount: number;
   feedCount: number;

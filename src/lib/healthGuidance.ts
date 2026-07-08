@@ -223,9 +223,10 @@ export const buildHealthCheck = (
 
   const records = todayRecords(activities);
   const feedRecords = records.filter((record) => record.type === 'feed');
-  const breastfeedingCount = feedRecords.filter((record) => record.details?.feedType === 'breastfeeding').length;
-  const formulaRecords = feedRecords.filter((record) => record.details?.feedType === 'formula');
-  const expressedRecords = feedRecords.filter((record) => record.details?.feedType === 'expressed');
+  const milkFeedRecords = feedRecords.filter((record) => record.details?.feedType !== 'food');
+  const breastfeedingCount = milkFeedRecords.filter((record) => record.details?.feedType === 'breastfeeding').length;
+  const formulaRecords = milkFeedRecords.filter((record) => record.details?.feedType === 'formula');
+  const expressedRecords = milkFeedRecords.filter((record) => record.details?.feedType === 'expressed');
   const bottleTotalMl = todayStats.formulaMl + todayStats.expressedMl;
   const breastEstimate = breastfeedingEstimateMlRange(todayStats.breastfeedingMinutes);
   const totalMilkMinMl = bottleTotalMl + breastEstimate.min;
@@ -261,10 +262,10 @@ export const buildHealthCheck = (
           : 'Compare with hunger cues and weight gain.',
     });
   } else if (band.breastFeeds) {
-    const status = feedRecords.length === 0 ? 'attention' : rangeStatus(feedRecords.length, band.breastFeeds);
+    const status = milkFeedRecords.length === 0 ? 'attention' : rangeStatus(milkFeedRecords.length, band.breastFeeds);
     items.push({
-      label: 'Feed sessions',
-      value: `${feedRecords.length}`,
+      label: 'Milk feeds',
+      value: `${milkFeedRecords.length}`,
       target: `${rangeLabel(band.breastFeeds)}/day`,
       status,
       message: breastfeedingCount > 0 ? 'Breastfeeding is usually measured by sessions and baby cues.' : 'Log feeds to improve this check.',

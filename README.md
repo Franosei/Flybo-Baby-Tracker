@@ -15,7 +15,7 @@ Flybo Baby Tracker is a mobile-first React app for quickly logging baby care eve
 - Local baby switcher for parents tracking multiple children on one device
 - Date of birth based age display, shown as weeks, months/weeks, or years/months
 - One-tap Feed, Wee, and Poop logging
-- Feed modal for breastfeeding duration, expressed milk volume, or formula volume
+- Feed modal for breastfeeding duration, expressed milk volume, formula volume, or foods eaten
 - ml/oz switching with stored unit preference
 - Daily summary cards for intake, breastfeeding minutes, wee, poop, feed sessions, and total entries
 - Breastfeeding estimate included in milk totals using 30 minutes as about 60-90 ml
